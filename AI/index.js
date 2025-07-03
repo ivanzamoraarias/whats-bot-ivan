@@ -1,3 +1,57 @@
+import { friendsDict } from "../store/base";
+
+class BehaviorTree {
+    constructor() {
+        this.root = new Selector([
+            new DailyGreeting(),
+            new HandleDogCount(),
+            new HandleMenuSelection(),
+            new DefaultResponse()
+        ]);
+    }
+
+    async execute(message, context) {
+        await this.root.execute(message, context);
+    }
+}
+
+class Node {
+    async execute(message, context) {
+        throw new Error('execute() must be implemented');
+    }
+}
+
+class Selector extends Node {
+    constructor(children) {
+        super();
+        this.children = children || [];
+    }
+
+    async execute(message, context) {
+        for (const child of this.children) {
+            const result = await child.execute(message, context);
+            if (result) return true;
+        }
+        return false;
+    }
+}
+
+class Sequence extends Node {
+    constructor(children) {
+        super();
+        this.children = children || [];
+    }
+
+    async execute(message, context) {
+        for (const child of this.children) {
+            const result = await child.execute(message, context);
+            if (!result) return false;
+        }
+        return true;
+    }
+}
+
+
 class DailyGreeting extends Node {
     async execute(message, context) {
         const today = new Date().toISOString().split('T')[0];
@@ -72,10 +126,11 @@ class HandleMenuSelection extends Node {
 
     async handleOption1(message, context) {
         await client.sendMessage(message.from, 'Felicidades has presionado chismes!!');
-        if (context.friend?.name === "Vicky") {
-            await client.sendMessage(message.from, 'Hola Victoria, envia 1V para chismes normales, envia 2V para chismes de mi ex');
-        }
-        await client.sendMessage(message.from, 'Envia Chisme1 para saber sobre mi vida amorosa, Chime2 para saber de mi vida laboral, Chime3 para saber de mi :)');
+       
+        const output = await execSync(`npm run start "dime chismes de Ivan"`, {cwd: LLAMA_DIR});
+        console.log(`output: ${output?.toString()} `);
+        await client.sendMessage(message.from, `Chismes: ${output?.toString()}`);
+
     }
 }
 
@@ -86,3 +141,23 @@ class DefaultResponse extends Node {
         return true;
     }
 }
+
+// Helper function
+function getRandomGuauString(min = 1, max = 10) {
+    const times = Math.floor(Math.random() * (max - min + 1)) + min;
+    return 'guau '.repeat(times);
+}
+
+
+
+export { 
+    BehaviorTree, 
+    Node, 
+    Selector, 
+    Sequence, 
+    DailyGreeting, 
+    HandleDogCount, 
+    HandleMenuSelection, 
+    DefaultResponse, 
+    getRandomGuauString 
+};
