@@ -16,6 +16,14 @@ const client = new Client();
 
 const userContexts = new Map();
 
+
+function sleepRandom() {
+    const delay = Math.floor(Math.random() * (300000 - 1000 + 1)) + 1000;
+    
+    console.log(` Will respond in ${delay/1000} seconds.`);
+    return new Promise(resolve => setTimeout(resolve, delay));
+}
+
 function isBroadcast(message) {
   // Broadcast messages usually have fromMe=true, but no author (e.g., status updates)
   if (message.fromMe && !message.author) return true;
@@ -24,30 +32,31 @@ function isBroadcast(message) {
   return message.from.endsWith('@broadcast') || message.from === 'status@broadcast';
 }
 
-const getLlamaAnswer = async (message, contextMessages) => {
-    const jsonString = JSON.stringify(contextMessages.slice(-6));
-    const utf8Buffer = Buffer.from(jsonString, 'utf-8');
-    const contextInBase64String = utf8Buffer.toString('base64');
+const getLlamaAnswer = async (message, userId) => {
+    try {
 
+        const output = await execSync(`npm run start -- ${clientId ? `--owner "${clientId}"`: '' } --question "${message.body}" --conversationId "${userId}"`, {cwd: LLAMA_DIR});
+        const stringOutput = output?.toString();
 
-    const output = await execSync(`npm run start -- ${clientId ? `--owner "${clientId}"`: '' } --question "${message.body}" --context "${contextInBase64String}"`, {cwd: LLAMA_DIR});
-    const stringOutput = output?.toString();
-
-    if (!stringOutput) {
-        return "Lo siento, no tengo una respuesta para eso.";
-    }
+        if (!stringOutput) {
+            return "Lo siento, no tengo una respuesta para eso.";
+        }
 
    
-    const keyword = "Response:";
+        const keyword = "Response:";
 
-    const responseIndex = stringOutput.indexOf(keyword);
+        const responseIndex = stringOutput.indexOf(keyword);
 
    
-    const extractedResponse = stringOutput.slice(responseIndex + keyword.length).trim();
-    console.log(extractedResponse); // "This is the response you want to extract."
+        const extractedResponse = stringOutput.slice(responseIndex + keyword.length).trim();
+        console.log(extractedResponse); // "This is the response you want to extract."
     
 
-    return extractedResponse;
+        return extractedResponse;
+
+    } catch (error) {
+        return "cant answer that right now, try again later.";
+    }
 
 }
 
@@ -67,13 +76,7 @@ client.on('qr', qr => {
 
 client.on('message', async (message) => {
 
-    const chat = await client.getChatById(chatId);
-  
-  // Check if chat is archived
-  if (chat.archived) {
-    console.log(`[BLOCKED] Cannot send to ${chat.name} - Group is archived.`);
-    return;
-  }
+    
 
     if (isBroadcast(message)) {
         return;
@@ -108,7 +111,7 @@ client.on('message', async (message) => {
 
     const contextMessages = context.contextMessages || [];
    
-    const output = await getLlamaAnswer(message, contextMessages);
+    const output = await getLlamaAnswer(message, userId);
 
      contextMessages.push({
         role: 'user',
@@ -119,6 +122,8 @@ client.on('message', async (message) => {
         role: 'assistant',
         content: output
     });
+
+    await sleepRandom();
 
     await client.sendMessage(message.from, `${output}`);
 
