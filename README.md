@@ -1,3 +1,4 @@
+more info or check more projects: https://fizagameengines.blogspot.com/
 # WhatsApp Bot with whatsapp-web.js
 
 This is a Node.js project using [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to automate interactions with WhatsApp Web. You can use it to build bots, send/receive messages, respond to specific commands, and more.
